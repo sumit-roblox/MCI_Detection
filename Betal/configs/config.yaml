@@ -1,0 +1,63 @@
+# ============================================================
+# Federated Multimodal MCI Detection — Master Configuration
+# ============================================================
+
+# ── Data paths ───────────────────────────────────────────────
+data:
+  metadata_path: "data/metadata.csv"   # CSV with patient_id, audio_path, text_path, mri_path, ehr_* cols, label
+  data_dir: "data"                      # Root directory; paths in CSV are relative to this
+  audio_dir: "data/audio"
+  text_dir: "data/transcripts"
+  mri_dir: "data/mri"
+  ehr_path: "data/ehr/patient_data.csv"
+
+# ── Model architecture ───────────────────────────────────────
+model:
+  audio_model_name: "facebook/wav2vec2-base"
+  text_model_name: "bert-base-uncased"
+  max_text_len: 128
+  target_sr: 16000
+  mri_in_channels: 1
+  mri_out_features: 128
+  mri_target_shape: [64, 64, 64]
+  ehr_in_features: 50           # Must match number of ehr_* columns in metadata CSV
+  ehr_out_features: 64
+  fusion_hidden_dim: 256
+  num_classes: 2                # 0 = Healthy, 1 = MCI
+
+# ── Training hyperparameters ─────────────────────────────────
+training:
+  batch_size: 8
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-4
+  epochs: 20
+  seed: 42
+  grad_clip_norm: 1.0
+
+# ── Federated Learning ───────────────────────────────────────
+federated:
+  server_address: "127.0.0.1:8080"
+  num_rounds: 10
+  min_clients: 2
+  local_epochs: 2              # Local epochs per FL round per client
+
+# ── LoRA (PEFT) ──────────────────────────────────────────────
+lora:
+  rank: 8
+  alpha: 16
+  dropout: 0.1
+  apply_to_text: true          # Apply LoRA to BERT
+  apply_to_audio: true         # Apply LoRA to Wav2Vec2
+
+# ── Knowledge Graph / RAG ────────────────────────────────────
+knowledge_graph:
+  uri: "bolt://localhost:7687"
+  user: "neo4j"
+  password: "password"
+  database: "neo4j"
+  max_retrieval_results: 5
+
+# ── Checkpointing ────────────────────────────────────────────
+checkpointing:
+  save_dir: "checkpoints"
+  save_best_metric: "f1_score"  # Metric used to determine best model
